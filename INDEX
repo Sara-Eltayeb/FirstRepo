@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hello World Motion</title>
+
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    transition: background 0.5s ease;
+  }
+
+  h1 {
+    position: absolute;
+    margin: 0;
+    font-size: 40px;
+  }
+
+  button {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    padding: 10px 15px;
+    cursor: pointer;
+    z-index: 10;
+  }
+</style>
+</head>
+
+<body>
+
+<button onclick="changeBg()">Change Background</button>
+<h1 id="text">Hello World 👋</h1>
+
+<script>
+  const colors = ["#f7b267", "#86e7b8", "#7aa2f7", "#f77fbe", "#ffd166"];
+  let colorIndex = 0;
+
+  function changeBg() {
+    document.body.style.background = colors[colorIndex];
+    colorIndex = (colorIndex + 1) % colors.length;
+  }
+
+  const text = document.getElementById("text");
+  let x = 100, y = 100;
+  let dx = 2, dy = 2;
+
+  function animate() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    x += dx;
+    y += dy;
+
+    if (x <= 0 || x >= w - 150) dx *= -1;
+    if (y <= 0 || y >= h - 50) dy *= -1;
+
+    text.style.left = x + "px";
+    text.style.top = y + "px";
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+
+</body>
+</html>
