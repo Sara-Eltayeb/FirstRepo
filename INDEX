@@ -1,71 +1,352 @@
+Here is a complete, single-file retro game: **Space Invaders: The Mini Arcade**.
+
+It’s built using HTML5 Canvas, pure JavaScript, and some classic 80s neon styling. It includes a player ship, moving alien invaders, shooting mechanics, score tracking, and an increasing difficulty curve.
+
+### How to Play:
+
+* **Left Arrow / A:** Move Left
+* **Right Arrow / D:** Move Right
+* **Spacebar:** Shoot
+
+---
+
+### The Code (`index.html`)
+
+To play, just copy the code below, save it as an `.html` file (e.g., `retro_game.html`), and double-click it to open and play in any web browser!
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hello World Motion</title>
-
-<style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    transition: background 0.5s ease;
-  }
-
-  h1 {
-    position: absolute;
-    margin: 0;
-    font-size: 40px;
-  }
-
-  button {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    padding: 10px 15px;
-    cursor: pointer;
-    z-index: 10;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Space Arcade</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #050510;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            color: #00ffcc;
+            text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+            margin-bottom: 10px;
+            font-size: 2rem;
+            letter-spacing: 4px;
+        }
+        #game-container {
+            position: relative;
+            border: 4px solid #ff0055;
+            box-shadow: 0 0 15px #ff0055, inset 0 0 15px #ff0055;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+        }
+        .instructions {
+            margin-top: 15px;
+            color: #888;
+            font-size: 0.9rem;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .highlight {
+            color: #ffcc00;
+            font-weight: bold;
+        }
+    </style>
 </head>
-
 <body>
 
-<button onclick="changeBg()">Change Background</button>
-<h1 id="text">Hello World 👋</h1>
+    <h1>SPACE INVADERS</h1>
+    
+    <div id="game-container">
+        <canvas id="gameCanvas" width="600" height="500"></canvas>
+    </div>
 
-<script>
-  const colors = ["#f7b267", "#86e7b8", "#7aa2f7", "#f77fbe", "#ffd166"];
-  let colorIndex = 0;
+    <div class="instructions">
+        <p><span class="highlight">A / D</span> or <span class="highlight">← / →</span> to Move</p>
+        <p><span class="highlight">SPACEBAR</span> to Shoot</p>
+    </div>
 
-  function changeBg() {
-    document.body.style.background = colors[colorIndex];
-    colorIndex = (colorIndex + 1) % colors.length;
-  }
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-  const text = document.getElementById("text");
-  let x = 100, y = 100;
-  let dx = 2, dy = 2;
+        // Game State Variables
+        let score = 0;
+        let lives = 3;
+        let gameOver = false;
+        let gameWon = false;
+        let keys = {};
 
-  function animate() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+        // Player Setup
+        const player = {
+            x: canvas.width / 2 - 20,
+            y: canvas.height - 40,
+            width: 40,
+            height: 20,
+            speed: 6,
+            color: #00ffcc
+        };
 
-    x += dx;
-    y += dy;
+        // Projectiles
+        let bullets = [];
+        const bulletSpeed = 7;
 
-    if (x <= 0 || x >= w - 150) dx *= -1;
-    if (y <= 0 || y >= h - 50) dy *= -1;
+        // Enemy Setup
+        const enemyRows = 4;
+        const enemyCols = 8;
+        const enemyWidth = 35;
+        const enemyHeight = 20;
+        const enemyPadding = 15;
+        const enemyOffsetTop = 50;
+        const enemyOffsetLeft = 45;
+        let enemies = [];
+        let enemyDirection = 1; // 1 = Right, -1 = Left
+        let enemySpeed = 1;
 
-    text.style.left = x + "px";
-    text.style.top = y + "px";
+        // Initialize Enemies
+        function initEnemies() {
+            enemies = [];
+            for (let r = 0; r < enemyRows; r++) {
+                enemies[r] = [];
+                for (let c = 0; c < enemyCols; c++) {
+                    enemies[r][c] = { 
+                        x: (c * (enemyWidth + enemyPadding)) + enemyOffsetLeft, 
+                        y: (r * (enemyHeight + enemyPadding)) + enemyOffsetTop, 
+                        alive: true 
+                    };
+                }
+            }
+        }
 
-    requestAnimationFrame(animate);
-  }
+        // Event Listeners for Controls
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space' && !gameOver && !gameWon) {
+                // Limit max bullets on screen to avoid spamming
+                if (bullets.length < 3) {
+                    bullets.push({ x: player.x + player.width / 2 - 2, y: player.y, width: 4, height: 10 });
+                }
+            }
+            if ((gameOver || gameWon) && e.code === 'KeyR') {
+                resetGame();
+            }
+        });
 
-  animate();
-</script>
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
 
+        function resetGame() {
+            score = 0;
+            lives = 3;
+            gameOver = false;
+            gameWon = false;
+            bullets = [];
+            enemySpeed = 1;
+            player.x = canvas.width / 2 - 20;
+            initEnemies();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Collision Detection Helper
+        function isColliding(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // Update Game Logic
+        function update() {
+            if (gameOver || gameWon) return;
+
+            // Move Player
+            if (keys['ArrowLeft'] || keys['KeyA']) {
+                player.x = Math.max(0, player.x - player.speed);
+            }
+            if (keys['ArrowRight'] || keys['KeyD']) {
+                player.x = Math.min(canvas.width - player.width, player.x + player.speed);
+            }
+
+            // Move Bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= bulletSpeed;
+                // Remove off-screen bullets
+                if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Move Enemies
+            let shiftDown = false;
+            let allDead = true;
+
+            for (let r = 0; r < enemyRows; r++) {
+                for (let c = 0; c < enemyCols; c++) {
+                    let enemy = enemies[r][c];
+                    if (enemy.alive) {
+                        allDead = false;
+                        enemy.x += enemySpeed * enemyDirection;
+
+                        // Check boundaries to trigger reverse/drop
+                        if (enemy.x + enemyWidth > canvas.width - 20 || enemy.x < 20) {
+                            shiftDown = true;
+                        }
+
+                        // Check if invaders reached the player's level
+                        if (enemy.y + enemyHeight >= player.y) {
+                            gameOver = true;
+                        }
+                    }
+                }
+            }
+
+            if (allDead) {
+                gameWon = true;
+            }
+
+            if (shiftDown) {
+                enemyDirection *= -1;
+                for (let r = 0; r < enemyRows; r++) {
+                    for (let c = 0; c < enemyCols; c++) {
+                        enemies[r][c].y += 15;
+                    }
+                }
+                // Increase speed slightly as they drop down
+                enemySpeed += 0.2; 
+            }
+
+            // Bullet & Enemy Collisions
+            for (let b = bullets.length - 1; b >= 0; b--) {
+                let bulletHit = false;
+                for (let r = 0; r < enemyRows; r++) {
+                    for (let c = 0; c < enemyCols; c++) {
+                        let enemy = enemies[r][c];
+                        if (enemy.alive && isColliding(bullets[b], { x: enemy.x, y: enemy.y, width: enemyWidth, height: enemyHeight })) {
+                            enemy.alive = false;
+                            bulletHit = true;
+                            score += 10;
+                            break;
+                        }
+                    }
+                    if (bulletHit) break;
+                }
+                if (bulletHit) {
+                    bullets.splice(b, 1);
+                }
+            }
+        }
+
+        // Render Graphics
+        function draw() {
+            // Clear Screen
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Stars Background (Retro Style)
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 20; i++) {
+                let starX = (Math.sin(i) + 1) * halfWidth = canvas.width / 2;
+                ctx.fillRect((i * 37) % canvas.width, (i * 29) % canvas.height, 2, 2);
+            }
+
+            // Draw Player Ship (Classic arcade blocky look)
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillRect(player.x + 15, player.y - 8, 10, 8); // Ship turret
+
+            // Draw Bullets
+            ctx.fillStyle = '#ffff00';
+            bullets.forEach(bullet => {
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+
+            // Draw Enemies
+            for (let r = 0; r < enemyRows; r++) {
+                for (let c = 0; c < enemyCols; c++) {
+                    let enemy = enemies[r][c];
+                    if (enemy.alive) {
+                        // Dynamic color based on row
+                        if (r === 0) ctx.fillStyle = '#ff0055';
+                        else if (r === 1) ctx.fillStyle = '#ff00aa';
+                        else if (r === 2) ctx.fillStyle = '#ffcc00';
+                        else ctx.fillStyle = '#00ff66';
+
+                        ctx.fillRect(enemy.x, enemy.y, enemyWidth, enemyHeight);
+                        // Tiny space invader eyes
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(enemy.x + 7, enemy.y + 6, 4, 4);
+                        ctx.fillRect(enemy.x + enemyWidth - 11, enemy.y + 6, 4, 4);
+                    }
+                }
+            }
+
+            // Draw UI (Score)
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px "Courier New"';
+            ctx.fillText(`SCORE: ${score}`, 20, 30);
+
+            // Draw Screens (Game Over / Win)
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#ff0055';
+                ctx.font = '40px "Courier New"';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 10);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px "Courier New"';
+                ctx.fillText('Press "R" to Restart', canvas.width / 2, canvas.height / 2 + 30);
+                ctx.textAlign = 'start'; // reset text align
+            }
+
+            if (gameWon) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#00ffcc';
+                ctx.font = '40px "Courier New"';
+                ctx.textAlign = 'center';
+                ctx.fillText('VICTORY!', canvas.width / 2, canvas.height / 2 - 10);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px "Courier New"';
+                ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 25);
+                ctx.fillText('Press "R" to Play Again', canvas.width / 2, canvas.height / 2 + 60);
+                ctx.textAlign = 'start'; // reset text align
+            }
+        }
+
+        // Main Game Loop
+        function gameLoop() {
+            update();
+            draw();
+            if (!gameOver && !gameWon) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Start Game
+        initEnemies();
+        gameLoop();
+    </script>
 </body>
 </html>
+
+```
